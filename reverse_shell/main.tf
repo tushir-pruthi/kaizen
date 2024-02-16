@@ -1,11 +1,12 @@
-provider "aws"  {
+provider "aws" {
   region = "${var.region}"
 }
 
 resource "aws_vpc" "main" {
   cidr_block = "${var.vpc_cidr}"
   tags = {
-    Name = "tmp_vulnado_rev_shell_vpc"
+    Name        = "tmp_vulnado_rev_shell_vpc"
+    application = "sockshop"
   }
 }
 
@@ -13,7 +14,8 @@ resource "aws_internet_gateway" "gw" {
   vpc_id = "${aws_vpc.main.id}"
 
   tags = {
-    Name = "tmp_vulnado_rev_shell_igw"
+    Name        = "tmp_vulnado_rev_shell_igw"
+    application = "sockshop"
   }
 }
 
@@ -26,17 +28,19 @@ resource "aws_route_table" "r" {
   }
 
   tags = {
-    Name = "tmp_vulnado_rev_shell_rt"
+    Name        = "tmp_vulnado_rev_shell_rt"
+    application = "sockshop"
   }
 }
 
 resource "aws_subnet" "subnet" {
-  vpc_id     = "${aws_vpc.main.id}"
-  cidr_block = "${var.subnet_cidr}"
-  availability_zone = "${var.region}b"
+  vpc_id                  = "${aws_vpc.main.id}"
+  cidr_block              = "${var.subnet_cidr}"
+  availability_zone       = "${var.region}b"
   map_public_ip_on_launch = true
   tags = {
-    Name = "tmp_vulnado_rev_shell_subnet"
+    Name        = "tmp_vulnado_rev_shell_subnet"
+    application = "sockshop"
   }
 }
 
@@ -46,8 +50,8 @@ resource "aws_route_table_association" "assoc" {
 }
 
 resource "aws_security_group" "sg" {
-  name        = "tmp_vulnado_rev_shell_sg"
-  vpc_id      = "${aws_vpc.main.id}"
+  name   = "tmp_vulnado_rev_shell_sg"
+  vpc_id = "${aws_vpc.main.id}"
 
   ingress {
     protocol    = "tcp"
@@ -64,16 +68,19 @@ resource "aws_security_group" "sg" {
   }
 
   egress {
-    from_port = 0
-    to_port   = 0
-    protocol  = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
+  }
+  tags = {
+    application = "sockshop"
   }
 }
 
 data "aws_ami" "amznlinux" {
   most_recent = true
-  owners = ["amazon"]
+  owners      = ["amazon"]
 
   filter {
     name   = "name"
@@ -86,20 +93,24 @@ data "aws_ami" "amznlinux" {
 resource "aws_key_pair" "attacker" {
   key_name   = "tmp-vulnado-deploy-key"
   public_key = "${var.public_key}"
+  tags = {
+    application = "sockshop"
+  }
 }
 
 resource "aws_instance" "receiver" {
-  ami           = "${data.aws_ami.amznlinux.id}"
-  instance_type = "t2.micro"
-  subnet_id = "${aws_subnet.subnet.id}"
-  key_name = "${aws_key_pair.attacker.key_name}"
+  ami                    = "${data.aws_ami.amznlinux.id}"
+  instance_type          = "t2.micro"
+  subnet_id              = "${aws_subnet.subnet.id}"
+  key_name               = "${aws_key_pair.attacker.key_name}"
   vpc_security_group_ids = ["${aws_security_group.sg.id}"]
-  user_data = <<EOF
+  user_data              = <<EOF
 #!/bin/bash
 yum update
 yum install -y nmap
 EOF
   tags = {
-    Name = "VulnadoReverseShellReceiver"
+    Name        = "VulnadoReverseShellReceiver"
+    application = "sockshop"
   }
 }
